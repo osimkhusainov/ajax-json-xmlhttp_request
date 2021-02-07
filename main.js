@@ -1,72 +1,89 @@
-const btn = document.querySelector("button");
-const container = document.querySelector(".container");
-const usersInfo = document.querySelector(".users-info");
-let local;
-function toLocal() {
-  local = container.innerHTML;
-  localStorage.setItem("todo", local);
-}
-if (localStorage.getItem("todo")) {
-  container.innerHTML = localStorage.getItem("todo");
-}
-function getUsers(cd) {
+const usersListElement = document.querySelector(".users-list");
+const userInfo = document.querySelector('.user-info')
+const apiUrl = "https://jsonplaceholder.typicode.com";
+
+
+usersListElement.addEventListener('click', e => {
+    e.preventDefault()
+    if(e.target.dataset.userId){
+        getUserInfoHTTP(e.target.dataset.userId, onGetUserInfoCallback)
+    }
+})
+function getUsersHTTP(cb) {
   const xhr = new XMLHttpRequest();
-  xhr.open("GET", "https://jsonplaceholder.typicode.com/users");
+  xhr.open("GET", `${apiUrl}/users`);
   xhr.addEventListener("load", () => {
+    if (xhr.status !== 200) {
+      return;
+    }
     const response = JSON.parse(xhr.responseText);
-    cd(response);
-  });
-  xhr.addEventListener("error", () => {
-    console.log("error");
+    cb(response);
   });
   xhr.send();
 }
-function createUsersList(response) {
-  const fragment = document.createDocumentFragment();
-  response.forEach((users) => {
-    const card = document.createElement("div");
-    card.classList.add("card");
-    card.dataset == users.id
-    card.textContent = users.name;
-    const cardName = document.createElement("p");
-    cardName.classList.add("card-text");
 
-    card.appendChild(cardName);
-    fragment.appendChild(card);
-
-  });
-  container.appendChild(fragment);
-  toLocal();
-}
-function infoUsers(response){
-    const fragment = document.createDocumentFragment();
-    response.forEach((users) => {
-      const card = document.createElement("div");
-      card.classList.add("card");
-      const userName = document.createElement("div");
-      userName.classList.add("card-title");
-      userName.textContent = users.username
-      const email = document.createElement("a");
-      email.classList.add('card-text')
-      email.textContent = users.email
-      const address = document.createElement('div')
-      address.classList.add('card-body')
-      const street = document.createElement('p')
-      street.classList.add('card-text')
-      street.textContent = users.address.street
-      address.appendChild(street)
-      card.appendChild(userName)
-      card.appendChild(email)
-      card.appendChild(address)
-      fragment.appendChild(card)
+function getUserInfoHTTP(id, cb){
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", `${apiUrl}/users/${id}`);
+    xhr.addEventListener("load", () => {
+      if (xhr.status !== 200) {
+        return;
+      }
+      const response = JSON.parse(xhr.responseText);
+      cb(response);
     });
-    usersInfo.appendChild(fragment)
+    xhr.send();
 }
-btn.addEventListener("click", (e) => {
-  getUsers(createUsersList);
-});
-container.addEventListener("click", ({ target }) => {
-  if (target.classList.contains("card")) {
-    target.closest(getUsers(infoUsers));
+
+function onGetUserInfoCallback(user){
+    if(!user.id){
+        return
+    }
+    renderUserInfo(user)
+}
+function renderUserInfo(user){
+    userInfo.innerHTML = ''
+    const template = userInfoTemplate(user)
+    userInfo.insertAdjacentHTML('afterbegin', template)
+}
+
+function onGetUsersCallBack(users) {
+  if (!users.length) {
+    return;
   }
-});
+  renderUsersList(users);
+}
+
+
+function renderUsersList(users) {
+  const fragment = users.reduce((acc, user) => 
+    acc + userListItemTemplate(user), "");
+    usersListElement.insertAdjacentHTML("afterbegin", fragment);
+}
+
+function userListItemTemplate(user) {
+  return `
+        <button type="button" class="list-group-item list-group-item-action" data-user-id="${user.id}">
+            ${user.name}
+        </button>
+    `;
+}
+function userInfoTemplate(user){
+    return `
+        <div class="card border-primary mb-3">
+            <div class="card-header">${user.name}</div>
+            <div class="card-body text-primary">
+                <h5 class="card-title">${user.email} </h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><b>Nickname: </b>${user.username}</li>
+                    <li class="list-group-item"><b>Website: </b>${user.website}</li>
+                    <li class="list-group-item"><b>Company: </b>${user.company.name}</li>
+                    <li class="list-group-item"><b>City: </b>${user.address.city}</li>
+                </ul>
+            </div>
+            <div class="card-footer bg-transparent border-success">Phone: ${user.phone}</div>
+        </div>
+    `
+}
+getUsersHTTP(onGetUsersCallBack);
+
